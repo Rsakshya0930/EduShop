@@ -38,21 +38,27 @@ Student-focused buy/sell marketplace platform similar to Amazon. Features landin
 - Profile page with editable fields
 - Neo-brutalist design system (black + yellow)
 
+## Phase 2 Features (April 5, 2026)
+- Product ratings/reviews system (1-5 star ratings with comments)
+- Password reset flow (forgot-password + reset-password with Resend email integration)
+- Email notifications for order placement and status updates (Resend, falls back to console logging)
+- Enhanced search with price range filters (min/max price inputs)
+- Campus Groups: auto-created groups by college name + user-created custom groups with group product feeds
+
 ## Prioritized Backlog
 ### P0 (Critical)
 - None remaining
 
 ### P1 (Important)
-- Product ratings/reviews system
-- Password reset flow
-- Email notifications for orders
+- Resend API key integration for live email delivery
+- Wishlist/favorites feature
+- Order tracking timeline
 
 ### P2 (Nice to have)
-- Wishlist/favorites
 - Product image gallery (multiple image zoom)
-- Advanced search filters (price range, condition)
-- Order tracking timeline
 - Seller analytics dashboard
+- Push notifications
+- Group chat within campus groups
 
 ## Next Tasks
 - Add product ratings/reviews
