@@ -45,7 +45,10 @@ Student-focused buy/sell marketplace platform similar to Amazon. Features landin
 - Enhanced search with price range filters (min/max price inputs)
 - Campus Groups: auto-created groups by college name + user-created custom groups with group product feeds
 
-## Prioritized Backlog
+## Phase 3 Features (April 5, 2026)
+- Resend API key configured for live email delivery
+- Wishlist/favorites: heart icons on product cards + product detail, dedicated wishlist page, nav link
+- All 54 backend API tests passing (100%)
 ### P0 (Critical)
 - None remaining
 
