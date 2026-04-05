@@ -1,0 +1,102 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast) + 6 (Vibrant Play) Hybrid",
+  "design_vision": "A neo-brutalist take on Amazon tailored for students. It prioritizes function, high contrast, and raw energy. The interface uses a stark black and light yellow color palette, employing harsh borders, prominent typography, and highly visible interactive elements to create a trustworthy, fast-moving marketplace vibe.",
+  "colors": {
+    "background": "hsl(54, 100%, 95%)",
+    "foreground": "hsl(0, 0%, 5%)",
+    "primary": "hsl(45, 100%, 51%)",
+    "primary_foreground": "hsl(0, 0%, 5%)",
+    "secondary": "hsl(0, 0%, 5%)",
+    "secondary_foreground": "hsl(54, 100%, 95%)",
+    "muted": "hsl(0, 0%, 90%)",
+    "muted_foreground": "hsl(0, 0%, 40%)",
+    "accent": "hsl(45, 100%, 51%)",
+    "accent_foreground": "hsl(0, 0%, 5%)",
+    "destructive": "hsl(0, 100%, 50%)",
+    "destructive_foreground": "hsl(0, 0%, 100%)",
+    "border": "hsl(0, 0%, 5%)",
+    "input": "hsl(0, 0%, 5%)",
+    "ring": "hsl(0, 0%, 5%)",
+    "card": "hsl(0, 0%, 100%)",
+    "card_foreground": "hsl(0, 0%, 5%)"
+  },
+  "typography": {
+    "font_family_heading": "Clash Display, sans-serif",
+    "font_family_body": "IBM Plex Sans, sans-serif",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter uppercase",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight uppercase",
+    "h3": "text-xl sm:text-2xl font-bold tracking-tight",
+    "h4": "text-lg sm:text-xl font-bold tracking-tight",
+    "body": "text-base font-medium leading-relaxed",
+    "small": "text-sm font-semibold tracking-wider uppercase",
+    "button": "text-base font-bold uppercase tracking-wide"
+  },
+  "spacing_and_layout": {
+    "container_padding": "p-6 md:p-12 lg:p-16",
+    "gap_standard": "gap-8",
+    "gap_large": "gap-16",
+    "border_radius": "rounded-none",
+    "border_width_default": "border-2",
+    "border_width_heavy": "border-4",
+    "shadow_default": "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
+    "shadow_hover": "shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]",
+    "shadow_active": "shadow-[0px_0px_0px_0px_rgba(0,0,0,1)]",
+    "grid_bento": "grid-cols-1 md:grid-cols-12 gap-8"
+  },
+  "components": {
+    "header": {
+      "style": "bg-white border-b-4 border-black py-4 sticky top-0 z-50",
+      "navigation": "hidden md:flex gap-6 items-center",
+      "search_bar": "border-2 border-black bg-white rounded-none px-4 py-2 focus:ring-0 focus:outline-none focus:bg-yellow-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+      "cta": "bg-black text-white px-6 py-2 font-bold uppercase hover:bg-yellow-400 hover:text-black transition-colors"
+    },
+    "card": {
+      "style": "bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all duration-200 p-4 flex flex-col gap-4",
+      "image_container": "border-2 border-black aspect-square overflow-hidden bg-gray-100",
+      "title": "font-heading font-bold text-xl truncate",
+      "price": "text-2xl font-black bg-yellow-300 inline-block px-2 border-2 border-black"
+    },
+    "button": {
+      "primary": "bg-yellow-400 text-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all px-8 py-3 font-bold uppercase",
+      "secondary": "bg-white text-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all px-8 py-3 font-bold uppercase",
+      "ghost": "bg-transparent text-black border-2 border-transparent hover:border-black transition-all px-8 py-3 font-bold uppercase"
+    },
+    "toggle": {
+      "container": "inline-flex bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-1",
+      "active": "bg-black text-white px-6 py-2 font-bold uppercase",
+      "inactive": "bg-transparent text-black px-6 py-2 font-bold uppercase hover:bg-yellow-200"
+    },
+    "input": {
+      "style": "bg-white border-2 border-black p-3 font-medium focus:outline-none focus:ring-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:bg-yellow-50 transition-colors"
+    },
+    "badge": {
+      "style": "bg-black text-white px-3 py-1 text-xs font-bold uppercase border-2 border-black"
+    }
+  },
+  "animations": {
+    "hover_state": "transform -translate-y-1 transition-transform duration-200",
+    "active_state": "transform translate-y-1 shadow-none transition-all duration-100",
+    "marquee": "slow continuous slide for categories or announcements"
+  },
+  "media": {
+    "icons_library": "@phosphor-icons/react",
+    "hero_image": "https://images.unsplash.com/photo-1620650764255-6797e68c7904?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwyfHxjb2xsZWdlJTIwc3R1ZGVudCUyMGNhbXB1c3xlbnwwfHx8fDE3NzUzNzkyMzl8MA&ixlib=rb-4.1.0&q=85",
+    "product_books": "https://images.unsplash.com/photo-1675289141963-2bf967a63d39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA8Mzl8MHwxfHNlYXJjaHw0fHx1c2VkJTIwdGV4dGJvb2tzJTIwbm90ZWJvb2tzfGVufDB8fHx8MTc3NTM3OTIzOXww&ixlib=rb-4.1.0&q=85",
+    "product_laptop": "https://images.unsplash.com/photo-1607603289612-71ae134aa577?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHw0fHx1c2VkJTIwbGFwdG9wJTIwZWxlY3Ryb25pY3N8ZW58MHx8fHwxNzc1Mzc5MjM5fDA&ixlib=rb-4.1.0&q=85",
+    "student_lifestyle": "https://images.unsplash.com/photo-1632834380561-d1e05839a33a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjb2xsZWdlJTIwc3R1ZGVudCUyMGNhbXB1c3xlbnwwfHx8fDE3NzUzNzkyMzl8MA&ixlib=rb-4.1.0&q=85",
+    "placeholder_logo": "StudentMarket"
+  },
+  "instructions_to_main_agent": [
+    "Use Phosphor icons for a thick, bold look (weight='bold' or 'fill').",
+    "Do not use generic gray borders; use solid black (#000000) for all component borders.",
+    "Implement the brutalist shadow effect using Tailwind's arbitrary values: shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]. When hovering, increase offset to 8px. When active, reduce to 0px.",
+    "Headings must use 'Clash Display'. Add this to your HTML head or import via CSS. Body font should be 'IBM Plex Sans'.",
+    "Every interactive element must have the 'data-testid' attribute.",
+    "For the Buy/Sell toggle, use a massive, pill-like or blocky toggle switch prominently in the header or hero section.",
+    "Ensure input fields don't have rounded corners. Use rounded-none for a sharp, edgy feel.",
+    "The admin dashboard should follow the same brutalist theme but utilize a denser grid layout.",
+    "For chat UI, use high-contrast text bubbles (black bg with white text vs white bg with black text and thick borders).",
+    "All cards must have white backgrounds to contrast against the light yellow page background."
+  ]
+}
