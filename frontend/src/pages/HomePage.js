@@ -25,6 +25,7 @@ export default function HomePage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
+  const [wishlistIds, setWishlistIds] = useState([]);
 
   const fetchProducts = useCallback(async (search = '', category = '', sort = 'newest', minP = 0, maxP = 0) => {
     setLoading(true);
@@ -49,9 +50,15 @@ export default function HomePage() {
   }, [user, getAuthHeaders]);
 
   useEffect(() => {
-    if (mode === 'buy') fetchProducts(searchQuery, activeCategory, sortBy, minPrice, maxPrice);
+    if (mode === 'buy') {
+      fetchProducts(searchQuery, activeCategory, sortBy, minPrice, maxPrice);
+      // Fetch wishlist IDs
+      axios.get(`${API}/wishlist/ids`, { headers: getAuthHeaders(), withCredentials: true })
+        .then(res => setWishlistIds(res.data))
+        .catch(() => {});
+    }
     else fetchMyProducts();
-  }, [mode, searchQuery, activeCategory, sortBy, minPrice, maxPrice, fetchProducts, fetchMyProducts]);
+  }, [mode, searchQuery, activeCategory, sortBy, minPrice, maxPrice, fetchProducts, fetchMyProducts, getAuthHeaders]);
 
   const handleSearch = (q) => { setSearchQuery(q); fetchProducts(q, activeCategory, sortBy, minPrice, maxPrice); };
 
@@ -229,7 +236,16 @@ export default function HomePage() {
               </div>
             ) : (
               <div data-testid="products-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {products.map(p => <ProductCard key={p.id} product={p} />)}
+                {products.map(p => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    wishlisted={wishlistIds.includes(p.id)}
+                    onWishlistChange={(pid, added) => {
+                      setWishlistIds(prev => added ? [...prev, pid] : prev.filter(id => id !== pid));
+                    }}
+                  />
+                ))}
               </div>
             )}
           </>

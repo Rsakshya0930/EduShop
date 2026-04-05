@@ -610,6 +610,98 @@ class StudentMarketplaceTester:
         
         return success and college_group.get('group_type') == 'auto'
 
+    def test_wishlist_system(self):
+        """Test wishlist functionality"""
+        if not self.user_token or not self.test_product_id:
+            return False
+        
+        # Get initial wishlist IDs (should be empty)
+        success1, initial_ids = self.run_test(
+            "Get Wishlist IDs (Initial)",
+            "GET",
+            "wishlist/ids",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Add product to wishlist
+        success2, add_response = self.run_test(
+            "Add Product to Wishlist",
+            "POST",
+            f"wishlist/{self.test_product_id}",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Try to add same product again (should return "Already in wishlist")
+        success3, duplicate_response = self.run_test(
+            "Add Product to Wishlist (Duplicate)",
+            "POST",
+            f"wishlist/{self.test_product_id}",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Get wishlist IDs (should contain our product)
+        success4, updated_ids = self.run_test(
+            "Get Wishlist IDs (After Add)",
+            "GET",
+            "wishlist/ids",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Get full wishlist (should contain product details)
+        success5, wishlist_products = self.run_test(
+            "Get Wishlist Products",
+            "GET",
+            "wishlist",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Remove product from wishlist
+        success6, remove_response = self.run_test(
+            "Remove Product from Wishlist",
+            "DELETE",
+            f"wishlist/{self.test_product_id}",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Get wishlist IDs (should be empty again)
+        success7, final_ids = self.run_test(
+            "Get Wishlist IDs (After Remove)",
+            "GET",
+            "wishlist/ids",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Verify responses
+        duplicate_check = duplicate_response.get('message', '').lower().find('already') != -1
+        ids_added = self.test_product_id in updated_ids if isinstance(updated_ids, list) else False
+        wishlist_has_product = any(p.get('id') == self.test_product_id for p in wishlist_products) if isinstance(wishlist_products, list) else False
+        ids_removed = self.test_product_id not in final_ids if isinstance(final_ids, list) else False
+        
+        return all([success1, success2, success3, success4, success5, success6, success7, 
+                   duplicate_check, ids_added, wishlist_has_product, ids_removed])
+
+    def test_resend_email_integration(self):
+        """Test Resend email integration with forgot password"""
+        # Test forgot password with a real email to trigger Resend API
+        success, response = self.run_test(
+            "Forgot Password (Resend Email Test)",
+            "POST",
+            "auth/forgot-password",
+            200,
+            data={"email": "admin@studentmarket.com"}
+        )
+        
+        # Since we have RESEND_API_KEY configured, this should attempt to send real email
+        # We can't verify email delivery in automated tests, but we can verify the API call succeeds
+        return success and response.get('message', '').startswith('If the email exists')
+
 def main():
     tester = StudentMarketplaceTester()
     
@@ -629,6 +721,7 @@ def main():
         ("Product Detail", tester.test_get_product_detail),
         ("Product Reviews System", tester.test_product_reviews),
         ("Price Range Filtering", tester.test_price_range_filter),
+        ("Wishlist System", tester.test_wishlist_system),
         ("Order Creation", tester.test_create_order),
         ("Order Listing", tester.test_list_orders),
         ("Conversations", tester.test_conversations),
@@ -636,6 +729,7 @@ def main():
         ("College Groups", tester.test_college_groups),
         ("Forgot Password", tester.test_forgot_password),
         ("Reset Password", tester.test_reset_password),
+        ("Resend Email Integration", tester.test_resend_email_integration),
         ("Admin Statistics", tester.test_admin_stats),
         ("Admin User Management", tester.test_admin_users),
         ("Admin Product Management", tester.test_admin_products),

@@ -15,6 +15,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import GroupsPage from '@/pages/GroupsPage';
+import WishlistPage from '@/pages/WishlistPage';
 import { Loader2 } from 'lucide-react';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
       <Route path="/groups/:groupId" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+      <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Search, ShoppingBag, MessageSquare, User, LogOut, Shield, Package, Menu, X, Users } from 'lucide-react';
+import { Search, ShoppingBag, MessageSquare, User, LogOut, Shield, Package, Menu, X, Users, Heart } from 'lucide-react';
 
 export default function Header({ searchQuery, setSearchQuery, onSearch }) {
   const { user, logout } = useAuth();
@@ -67,6 +67,9 @@ export default function Header({ searchQuery, setSearchQuery, onSearch }) {
               <Link to="/groups" data-testid="nav-groups" className="flex items-center gap-1 px-3 py-2 border-2 border-transparent hover:border-black font-bold uppercase text-sm transition-all">
                 <Users size={16} /> Groups
               </Link>
+              <Link to="/wishlist" data-testid="nav-wishlist" className="flex items-center gap-1 px-3 py-2 border-2 border-transparent hover:border-black font-bold uppercase text-sm transition-all">
+                <Heart size={16} /> Wishlist
+              </Link>
               {user.role === 'admin' && (
                 <Link to="/admin" data-testid="nav-admin" className="flex items-center gap-1 px-3 py-2 bg-black text-white font-bold uppercase text-sm hover:bg-yellow-400 hover:text-black transition-colors">
                   <Shield size={16} /> Admin
@@ -118,6 +121,7 @@ export default function Header({ searchQuery, setSearchQuery, onSearch }) {
               <Link to="/orders" onClick={() => setMobileOpen(false)} className="block px-4 py-2 border-2 border-black font-bold uppercase text-sm">Orders</Link>
               <Link to="/chat" onClick={() => setMobileOpen(false)} className="block px-4 py-2 border-2 border-black font-bold uppercase text-sm">Chat</Link>
               <Link to="/groups" onClick={() => setMobileOpen(false)} className="block px-4 py-2 border-2 border-black font-bold uppercase text-sm">Groups</Link>
+              <Link to="/wishlist" onClick={() => setMobileOpen(false)} className="block px-4 py-2 border-2 border-black font-bold uppercase text-sm">Wishlist</Link>
               {user.role === 'admin' && <Link to="/admin" onClick={() => setMobileOpen(false)} className="block px-4 py-2 bg-black text-white font-bold uppercase text-sm">Admin</Link>}
               <Link to="/profile" onClick={() => setMobileOpen(false)} className="block px-4 py-2 border-2 border-black font-bold uppercase text-sm">Profile</Link>
               <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-4 py-2 border-2 border-black bg-red-500 text-white font-bold uppercase text-sm">Logout</button>

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
-import { ArrowLeft, MessageSquare, Truck, MapPin, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Truck, MapPin, Loader2, Star, Heart } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -20,6 +20,7 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
     const fetch = async () => {
@@ -29,11 +30,25 @@ export default function ProductDetailPage() {
         // Fetch reviews
         const revRes = await axios.get(`${API}/products/${id}/reviews`, { headers: getAuthHeaders() });
         setReviews(revRes.data);
+        // Check wishlist
+        const wlRes = await axios.get(`${API}/wishlist/ids`, { headers: getAuthHeaders(), withCredentials: true });
+        setIsWishlisted(wlRes.data.includes(id));
       } catch { navigate('/home'); }
       finally { setLoading(false); }
     };
     fetch();
   }, [id, getAuthHeaders, navigate]);
+
+  const toggleWishlist = async () => {
+    try {
+      if (isWishlisted) {
+        await axios.delete(`${API}/wishlist/${id}`, { headers: getAuthHeaders(), withCredentials: true });
+      } else {
+        await axios.post(`${API}/wishlist/${id}`, {}, { headers: getAuthHeaders(), withCredentials: true });
+      }
+      setIsWishlisted(!isWishlisted);
+    } catch {}
+  };
 
   const handleChat = async () => {
     if (!user || !product) return;
@@ -162,6 +177,14 @@ export default function ProductDetailPage() {
                   className="flex items-center gap-2 bg-yellow-400 text-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all px-6 py-3 font-bold uppercase"
                 >
                   <Truck size={18} /> Order Now
+                </button>
+                <button
+                  data-testid="wishlist-detail-btn"
+                  onClick={toggleWishlist}
+                  className={`flex items-center gap-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all px-6 py-3 font-bold uppercase ${isWishlisted ? 'bg-red-500 text-white' : 'bg-white text-black'}`}
+                >
+                  <Heart size={18} className={isWishlisted ? 'fill-white' : ''} />
+                  {isWishlisted ? 'Saved' : 'Save'}
                 </button>
               </div>
             )}

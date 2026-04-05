@@ -562,6 +562,46 @@ async def get_reviews(product_id: str):
     reviews = await db.reviews.find({"product_id": product_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return reviews
 
+# ==================== WISHLIST ROUTES ====================
+
+@api_router.get("/wishlist")
+async def get_wishlist(request: Request):
+    user = await get_current_user(request)
+    items = await db.wishlist.find({"user_id": user["_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    product_ids = [item["product_id"] for item in items]
+    if not product_ids:
+        return []
+    products = await db.products.find({"id": {"$in": product_ids}, "status": "approved"}, {"_id": 0}).to_list(200)
+    return products
+
+@api_router.get("/wishlist/ids")
+async def get_wishlist_ids(request: Request):
+    user = await get_current_user(request)
+    items = await db.wishlist.find({"user_id": user["_id"]}, {"_id": 0, "product_id": 1}).to_list(500)
+    return [item["product_id"] for item in items]
+
+@api_router.post("/wishlist/{product_id}")
+async def add_to_wishlist(product_id: str, request: Request):
+    user = await get_current_user(request)
+    product = await db.products.find_one({"id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    existing = await db.wishlist.find_one({"user_id": user["_id"], "product_id": product_id})
+    if existing:
+        return {"message": "Already in wishlist", "wishlisted": True}
+    await db.wishlist.insert_one({
+        "user_id": user["_id"],
+        "product_id": product_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"message": "Added to wishlist", "wishlisted": True}
+
+@api_router.delete("/wishlist/{product_id}")
+async def remove_from_wishlist(product_id: str, request: Request):
+    user = await get_current_user(request)
+    await db.wishlist.delete_one({"user_id": user["_id"], "product_id": product_id})
+    return {"message": "Removed from wishlist", "wishlisted": False}
+
 # ==================== ORDER ROUTES ====================
 
 @api_router.post("/orders")
@@ -1026,6 +1066,7 @@ async def startup():
     await db.groups.create_index([("name", 1)])
     await db.groups.create_index([("group_type", 1)])
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=3600)
+    await db.wishlist.create_index([("user_id", 1), ("product_id", 1)], unique=True)
     
     await seed_admin()
     
