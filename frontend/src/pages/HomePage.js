@@ -23,13 +23,17 @@ export default function HomePage() {
   const [creating, setCreating] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', category: 'Books', condition: 'used', images: [] });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(0);
 
-  const fetchProducts = useCallback(async (search = '', category = '', sort = 'newest') => {
+  const fetchProducts = useCallback(async (search = '', category = '', sort = 'newest', minP = 0, maxP = 0) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ status: 'approved', sort });
       if (search) params.append('search', search);
       if (category) params.append('category', category);
+      if (minP > 0) params.append('min_price', minP);
+      if (maxP > 0) params.append('max_price', maxP);
       const { data } = await axios.get(`${API}/products?${params}`, { headers: getAuthHeaders() });
       setProducts(data.products || []);
     } catch (err) { console.error(err); }
@@ -45,11 +49,11 @@ export default function HomePage() {
   }, [user, getAuthHeaders]);
 
   useEffect(() => {
-    if (mode === 'buy') fetchProducts(searchQuery, activeCategory, sortBy);
+    if (mode === 'buy') fetchProducts(searchQuery, activeCategory, sortBy, minPrice, maxPrice);
     else fetchMyProducts();
-  }, [mode, searchQuery, activeCategory, sortBy, fetchProducts, fetchMyProducts]);
+  }, [mode, searchQuery, activeCategory, sortBy, minPrice, maxPrice, fetchProducts, fetchMyProducts]);
 
-  const handleSearch = (q) => { setSearchQuery(q); fetchProducts(q, activeCategory, sortBy); };
+  const handleSearch = (q) => { setSearchQuery(q); fetchProducts(q, activeCategory, sortBy, minPrice, maxPrice); };
 
   const handleModeToggle = async (newMode) => {
     setMode(newMode);
@@ -134,7 +138,7 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-2 mb-6">
               <button
                 data-testid="category-all"
-                onClick={() => { setActiveCategory(''); fetchProducts(searchQuery, '', sortBy); }}
+                onClick={() => { setActiveCategory(''); fetchProducts(searchQuery, '', sortBy, minPrice, maxPrice); }}
                 className={`px-4 py-2 border-2 border-black font-bold uppercase text-xs transition-all ${!activeCategory ? 'bg-black text-white' : 'bg-white hover:bg-yellow-200'}`}
               >
                 All
@@ -143,7 +147,7 @@ export default function HomePage() {
                 <button
                   key={cat}
                   data-testid={`filter-${cat.toLowerCase().replace(/\s/g, '-')}`}
-                  onClick={() => { setActiveCategory(cat); fetchProducts(searchQuery, cat, sortBy); }}
+                  onClick={() => { setActiveCategory(cat); fetchProducts(searchQuery, cat, sortBy, minPrice, maxPrice); }}
                   className={`px-4 py-2 border-2 border-black font-bold uppercase text-xs transition-all ${activeCategory === cat ? 'bg-black text-white' : 'bg-white hover:bg-yellow-200'}`}
                 >
                   {cat}
@@ -151,18 +155,68 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Sort */}
-            <div className="flex items-center gap-3 mb-6">
+            {/* Sort + Price Range */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="font-bold text-sm uppercase">Sort:</span>
               {[['newest', 'Newest'], ['price_low', 'Price Low'], ['price_high', 'Price High'], ['popular', 'Popular']].map(([val, label]) => (
                 <button
                   key={val}
-                  onClick={() => { setSortBy(val); fetchProducts(searchQuery, activeCategory, val); }}
+                  onClick={() => { setSortBy(val); fetchProducts(searchQuery, activeCategory, val, minPrice, maxPrice); }}
                   className={`px-3 py-1 border-2 border-black text-xs font-bold uppercase ${sortBy === val ? 'bg-yellow-400' : 'bg-white hover:bg-yellow-100'} transition-colors`}
                 >
                   {label}
                 </button>
               ))}
+            </div>
+
+            {/* Price Range Filter */}
+            <div className="flex flex-wrap items-end gap-3 mb-6 bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <span className="font-bold text-sm uppercase">Price Range:</span>
+              <div className="flex items-center gap-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Min ($)</label>
+                  <input
+                    data-testid="price-min"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={minPrice || ''}
+                    onChange={e => setMinPrice(Number(e.target.value) || 0)}
+                    className="w-24 border-2 border-black p-2 text-sm font-medium focus:outline-none focus:bg-yellow-50"
+                    placeholder="0"
+                  />
+                </div>
+                <span className="font-bold mt-5">—</span>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Max ($)</label>
+                  <input
+                    data-testid="price-max"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={maxPrice || ''}
+                    onChange={e => setMaxPrice(Number(e.target.value) || 0)}
+                    className="w-24 border-2 border-black p-2 text-sm font-medium focus:outline-none focus:bg-yellow-50"
+                    placeholder="Any"
+                  />
+                </div>
+                <button
+                  data-testid="price-filter-apply"
+                  onClick={() => fetchProducts(searchQuery, activeCategory, sortBy, minPrice, maxPrice)}
+                  className="bg-yellow-400 border-2 border-black px-4 py-2 font-bold uppercase text-xs mt-5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all"
+                >
+                  Apply
+                </button>
+                {(minPrice > 0 || maxPrice > 0) && (
+                  <button
+                    data-testid="price-filter-clear"
+                    onClick={() => { setMinPrice(0); setMaxPrice(0); fetchProducts(searchQuery, activeCategory, sortBy, 0, 0); }}
+                    className="border-2 border-black px-4 py-2 font-bold uppercase text-xs mt-5 hover:bg-red-500 hover:text-white transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Products Grid */}

@@ -11,7 +11,10 @@ import uuid
 import bcrypt
 import jwt
 import json
+import secrets
+import asyncio
 import requests
+import resend
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -30,6 +33,28 @@ JWT_ALGORITHM = "HS256"
 
 def get_jwt_secret():
     return os.environ["JWT_SECRET"]
+
+# Resend email config
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+FRONTEND_URL_PUBLIC = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
+async def send_email(to_email, subject, html_content):
+    """Send email via Resend. Falls back to logging if no API key."""
+    if not RESEND_API_KEY:
+        logger.info(f"[EMAIL-LOG] To: {to_email} | Subject: {subject} | Body: {html_content[:200]}")
+        return None
+    try:
+        params = {"from": SENDER_EMAIL, "to": [to_email], "subject": subject, "html": html_content}
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Email sent to {to_email}: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Email send failed: {e}")
+        return None
 
 # Storage config
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
@@ -141,6 +166,22 @@ class OrderInput(BaseModel):
 class MessageInput(BaseModel):
     content: str
 
+class ReviewInput(BaseModel):
+    rating: int  # 1-5
+    comment: str = ""
+
+class GroupInput(BaseModel):
+    name: str
+    description: str = ""
+    group_type: str = "custom"  # "auto" or "custom"
+
+class ForgotPasswordInput(BaseModel):
+    email: str
+
+class ResetPasswordInput(BaseModel):
+    token: str
+    new_password: str
+
 # App setup
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -173,6 +214,8 @@ async def register(input_data: RegisterInput, response: Response):
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
     
     return {"id": user_id, "name": input_data.name, "email": email, "role": "user", "college": input_data.college or "", "area": input_data.area or "", "mode": "buy", "token": access_token}
+
+    # Note: Auto-join college group happens on frontend via /groups/college/{name}
 
 @api_router.post("/auth/login")
 async def login(input_data: LoginInput, response: Response, request: Request):
@@ -243,6 +286,46 @@ async def refresh_token(request: Request, response: Response):
         return {"message": "Token refreshed"}
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(input_data: ForgotPasswordInput):
+    email = input_data.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        return {"message": "If the email exists, a reset link has been sent"}
+    token = secrets.token_urlsafe(32)
+    await db.password_reset_tokens.insert_one({
+        "token": token,
+        "user_id": str(user["_id"]),
+        "email": email,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+        "used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    reset_url = f"{FRONTEND_URL_PUBLIC}/reset-password?token={token}"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;border:3px solid #000;padding:24px;">
+        <h2 style="font-size:24px;font-weight:900;text-transform:uppercase;">StudentMarket</h2>
+        <p>You requested a password reset. Click the link below:</p>
+        <a href="{reset_url}" style="display:inline-block;background:#FFC800;color:#000;padding:12px 24px;font-weight:700;text-decoration:none;border:2px solid #000;">Reset Password</a>
+        <p style="margin-top:16px;font-size:12px;color:#666;">This link expires in 1 hour. If you didn't request this, ignore this email.</p>
+    </div>
+    """
+    await send_email(email, "Reset Your StudentMarket Password", html)
+    logger.info(f"Password reset link: {reset_url}")
+    return {"message": "If the email exists, a reset link has been sent"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(input_data: ResetPasswordInput):
+    record = await db.password_reset_tokens.find_one({"token": input_data.token, "used": False})
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    if record["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    new_hash = hash_password(input_data.new_password)
+    await db.users.update_one({"_id": ObjectId(record["user_id"])}, {"$set": {"password_hash": new_hash}})
+    await db.password_reset_tokens.update_one({"token": input_data.token}, {"$set": {"used": True}})
+    return {"message": "Password reset successfully"}
 
 # ==================== USER ROUTES ====================
 
@@ -336,7 +419,11 @@ async def list_products(
     sort: str = "newest",
     page: int = 1,
     limit: int = 20,
-    seller_id: str = ""
+    seller_id: str = "",
+    min_price: float = 0,
+    max_price: float = 0,
+    college: str = "",
+    group_id: str = ""
 ):
     query = {}
     if status:
@@ -345,6 +432,21 @@ async def list_products(
         query["category"] = category
     if seller_id:
         query["seller_id"] = seller_id
+    if min_price > 0:
+        query["price"] = {"$gte": min_price}
+    if max_price > 0:
+        query.setdefault("price", {})
+        if isinstance(query["price"], dict):
+            query["price"]["$lte"] = max_price
+        else:
+            query["price"] = {"$gte": min_price, "$lte": max_price}
+    if college:
+        query["seller_college"] = {"$regex": college, "$options": "i"}
+    if group_id:
+        # Get group members and filter by their seller_ids
+        group = await db.groups.find_one({"id": group_id}, {"_id": 0})
+        if group:
+            query["seller_id"] = {"$in": group.get("members", [])}
     if search:
         keywords = search.strip().split()
         or_conditions = []
@@ -423,6 +525,43 @@ async def reject_product(product_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Product not found")
     return {"message": "Product rejected"}
 
+# ==================== REVIEW ROUTES ====================
+
+@api_router.post("/products/{product_id}/reviews")
+async def create_review(product_id: str, input_data: ReviewInput, request: Request):
+    user = await get_current_user(request)
+    product = await db.products.find_one({"id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if product["seller_id"] == user["_id"]:
+        raise HTTPException(status_code=400, detail="Cannot review your own product")
+    if input_data.rating < 1 or input_data.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be 1-5")
+    # Check if already reviewed
+    existing = await db.reviews.find_one({"product_id": product_id, "user_id": user["_id"]})
+    if existing:
+        raise HTTPException(status_code=400, detail="You already reviewed this product")
+    review = {
+        "id": str(uuid.uuid4()),
+        "product_id": product_id,
+        "user_id": user["_id"],
+        "user_name": user["name"],
+        "rating": input_data.rating,
+        "comment": input_data.comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.reviews.insert_one(review)
+    # Update product average rating
+    all_reviews = await db.reviews.find({"product_id": product_id}, {"_id": 0, "rating": 1}).to_list(1000)
+    avg = sum(r["rating"] for r in all_reviews) / len(all_reviews) if all_reviews else 0
+    await db.products.update_one({"id": product_id}, {"$set": {"rating": round(avg, 1), "reviews_count": len(all_reviews)}})
+    return {k: v for k, v in review.items() if k != "_id"}
+
+@api_router.get("/products/{product_id}/reviews")
+async def get_reviews(product_id: str):
+    reviews = await db.reviews.find({"product_id": product_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return reviews
+
 # ==================== ORDER ROUTES ====================
 
 @api_router.post("/orders")
@@ -455,6 +594,32 @@ async def create_order(input_data: OrderInput, request: Request):
     }
     await db.orders.insert_one(order)
     await db.products.update_one({"id": input_data.product_id}, {"$inc": {"orders_count": 1}})
+    # Send email notification to seller
+    seller = await db.users.find_one({"_id": ObjectId(product["seller_id"])})
+    if seller:
+        html = f"""
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;border:3px solid #000;padding:24px;">
+            <h2 style="font-size:24px;font-weight:900;text-transform:uppercase;">New Order!</h2>
+            <p><strong>{user["name"]}</strong> ordered your product <strong>{product["name"]}</strong>.</p>
+            <p>Price: <strong>${product["price"]}</strong></p>
+            <p>Delivery: <strong>{input_data.delivery_method}</strong></p>
+            <p>Payment: <strong>Cash on Delivery</strong></p>
+            <p style="margin-top:16px;font-size:12px;color:#666;">Log in to StudentMarket to manage this order.</p>
+        </div>
+        """
+        await send_email(seller["email"], f"New Order: {product['name']}", html)
+    # Send confirmation to buyer
+    html_buyer = f"""
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;border:3px solid #000;padding:24px;">
+        <h2 style="font-size:24px;font-weight:900;text-transform:uppercase;">Order Confirmed!</h2>
+        <p>Your order for <strong>{product["name"]}</strong> has been placed.</p>
+        <p>Price: <strong>${product["price"]}</strong></p>
+        <p>Delivery: <strong>{input_data.delivery_method}</strong></p>
+        <p>Payment: <strong>Cash on Delivery</strong></p>
+        <p style="margin-top:16px;font-size:12px;color:#666;">The seller will be in touch soon.</p>
+    </div>
+    """
+    await send_email(user["email"], f"Order Placed: {product['name']}", html_buyer)
     return {k: v for k, v in order.items() if k != "_id"}
 
 @api_router.get("/orders")
@@ -491,6 +656,24 @@ async def update_order_status(order_id: str, request: Request):
     if order["seller_id"] != user["_id"] and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     await db.orders.update_one({"id": order_id}, {"$set": {"status": new_status}})
+    # Send email notification to buyer about status change
+    buyer = await db.users.find_one({"_id": ObjectId(order["buyer_id"])})
+    if buyer:
+        status_msgs = {
+            "confirmed": "has been confirmed by the seller",
+            "shipped": "has been shipped",
+            "delivered": "has been delivered",
+            "cancelled": "has been cancelled"
+        }
+        html = f"""
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;border:3px solid #000;padding:24px;">
+            <h2 style="font-size:24px;font-weight:900;text-transform:uppercase;">Order Update</h2>
+            <p>Your order for <strong>{order.get("product_name", "")}</strong> {status_msgs.get(new_status, f"status changed to {new_status}")}.</p>
+            <p>New Status: <strong style="text-transform:uppercase;">{new_status}</strong></p>
+            <p style="margin-top:16px;font-size:12px;color:#666;">Log in to StudentMarket to view details.</p>
+        </div>
+        """
+        await send_email(buyer["email"], f"Order Update: {order.get('product_name', '')}", html)
     return {"message": f"Order status updated to {new_status}"}
 
 # ==================== CHAT/CONVERSATION ROUTES ====================
@@ -631,6 +814,106 @@ async def websocket_chat(websocket: WebSocket, conv_id: str, token: str = Query(
         if conv_id in active_connections and user_id in active_connections[conv_id]:
             del active_connections[conv_id][user_id]
 
+# ==================== GROUPS / CAMPUS ROUTES ====================
+
+@api_router.post("/groups")
+async def create_group(input_data: GroupInput, request: Request):
+    user = await get_current_user(request)
+    group = {
+        "id": str(uuid.uuid4()),
+        "name": input_data.name,
+        "description": input_data.description,
+        "group_type": input_data.group_type,
+        "creator_id": user["_id"],
+        "creator_name": user["name"],
+        "members": [user["_id"]],
+        "member_count": 1,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.groups.insert_one(group)
+    return {k: v for k, v in group.items() if k != "_id"}
+
+@api_router.get("/groups")
+async def list_groups(request: Request, my_groups: str = ""):
+    user = await get_current_user(request)
+    if my_groups == "true":
+        query = {"members": user["_id"]}
+    else:
+        query = {}
+    groups = await db.groups.find(query, {"_id": 0}).sort("member_count", -1).to_list(100)
+    return groups
+
+@api_router.get("/groups/{group_id}")
+async def get_group(group_id: str, request: Request):
+    user = await get_current_user(request)
+    group = await db.groups.find_one({"id": group_id}, {"_id": 0})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group["is_member"] = user["_id"] in group.get("members", [])
+    return group
+
+@api_router.post("/groups/{group_id}/join")
+async def join_group(group_id: str, request: Request):
+    user = await get_current_user(request)
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if user["_id"] in group.get("members", []):
+        return {"message": "Already a member"}
+    await db.groups.update_one({"id": group_id}, {"$push": {"members": user["_id"]}, "$inc": {"member_count": 1}})
+    return {"message": "Joined group"}
+
+@api_router.post("/groups/{group_id}/leave")
+async def leave_group(group_id: str, request: Request):
+    user = await get_current_user(request)
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if user["_id"] not in group.get("members", []):
+        return {"message": "Not a member"}
+    await db.groups.update_one({"id": group_id}, {"$pull": {"members": user["_id"]}, "$inc": {"member_count": -1}})
+    return {"message": "Left group"}
+
+@api_router.get("/groups/{group_id}/products")
+async def get_group_products(group_id: str, request: Request):
+    user = await get_current_user(request)
+    group = await db.groups.find_one({"id": group_id}, {"_id": 0})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    members = group.get("members", [])
+    products = await db.products.find(
+        {"seller_id": {"$in": members}, "status": "approved"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return products
+
+@api_router.get("/groups/college/{college_name}")
+async def get_or_create_college_group(college_name: str, request: Request):
+    user = await get_current_user(request)
+    group = await db.groups.find_one({"name": college_name, "group_type": "auto"}, {"_id": 0})
+    if not group:
+        # Auto-create college group
+        group = {
+            "id": str(uuid.uuid4()),
+            "name": college_name,
+            "description": f"Auto-created group for {college_name} students",
+            "group_type": "auto",
+            "creator_id": "system",
+            "creator_name": "System",
+            "members": [user["_id"]],
+            "member_count": 1,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.groups.insert_one(group)
+        group = {k: v for k, v in group.items() if k != "_id"}
+    else:
+        if user["_id"] not in group.get("members", []):
+            await db.groups.update_one({"id": group["id"]}, {"$push": {"members": user["_id"]}, "$inc": {"member_count": 1}})
+            group["members"].append(user["_id"])
+            group["member_count"] += 1
+    group["is_member"] = True
+    return group
+
 # ==================== ADMIN ROUTES ====================
 
 @api_router.get("/admin/stats")
@@ -738,6 +1021,11 @@ async def startup():
     await db.orders.create_index([("seller_id", 1)])
     await db.conversations.create_index([("user1_id", 1), ("user2_id", 1)])
     await db.messages.create_index([("conversation_id", 1)])
+    await db.reviews.create_index([("product_id", 1)])
+    await db.reviews.create_index([("user_id", 1)])
+    await db.groups.create_index([("name", 1)])
+    await db.groups.create_index([("group_type", 1)])
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=3600)
     
     await seed_admin()
     

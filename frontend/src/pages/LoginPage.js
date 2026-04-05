@@ -98,6 +98,9 @@ export default function LoginPage() {
             Don't have an account?{' '}
             <Link to="/register" className="font-bold underline" data-testid="login-register-link">Sign up</Link>
           </p>
+          <p className="text-sm text-center mt-2">
+            <Link to="/forgot-password" className="font-bold underline text-gray-600" data-testid="login-forgot-pw-link">Forgot password?</Link>
+          </p>
         </div>
       </div>
     </div>

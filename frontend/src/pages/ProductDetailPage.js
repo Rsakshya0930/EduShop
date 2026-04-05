@@ -17,12 +17,18 @@ export default function ProductDetailPage() {
   const [showOrder, setShowOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({ delivery_method: 'local', delivery_address: '', phone: '', notes: '' });
   const [ordering, setOrdering] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetch = async () => {
       try {
         const { data } = await axios.get(`${API}/products/${id}`, { headers: getAuthHeaders() });
         setProduct(data);
+        // Fetch reviews
+        const revRes = await axios.get(`${API}/products/${id}/reviews`, { headers: getAuthHeaders() });
+        setReviews(revRes.data);
       } catch { navigate('/home'); }
       finally { setLoading(false); }
     };
@@ -53,6 +59,23 @@ export default function ProductDetailPage() {
       navigate('/orders');
     } catch (err) { alert('Order failed'); }
     finally { setOrdering(false); }
+  };
+
+  const handleReview = async (e) => {
+    e.preventDefault();
+    setSubmittingReview(true);
+    try {
+      await axios.post(`${API}/products/${id}/reviews`, reviewForm, { headers: getAuthHeaders(), withCredentials: true });
+      const revRes = await axios.get(`${API}/products/${id}/reviews`, { headers: getAuthHeaders() });
+      setReviews(revRes.data);
+      setReviewForm({ rating: 5, comment: '' });
+      // Refresh product to get updated rating
+      const prodRes = await axios.get(`${API}/products/${id}`, { headers: getAuthHeaders() });
+      setProduct(prodRes.data);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to submit review');
+    }
+    finally { setSubmittingReview(false); }
   };
 
   if (loading) return (
@@ -111,7 +134,17 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Star size={14} /> {product.views || 0} views &middot; {product.orders_count || 0} orders
+              <div className="flex items-center gap-0.5">
+                {[1,2,3,4,5].map(s => (
+                  <Star key={s} size={16} className={s <= Math.round(product.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                ))}
+              </div>
+              <span className="font-bold">{product.rating || 0}</span>
+              <span>({product.reviews_count || 0} reviews)</span>
+              <span>&middot;</span>
+              <span>{product.views || 0} views</span>
+              <span>&middot;</span>
+              <span>{product.orders_count || 0} orders</span>
             </div>
 
             {user && user.id !== product.seller_id && (
@@ -185,6 +218,74 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Reviews Section */}
+        <div className="mt-12 border-t-4 border-black pt-8" data-testid="reviews-section">
+          <h2 className="font-heading text-2xl font-bold uppercase mb-6">
+            Reviews ({reviews.length})
+          </h2>
+
+          {/* Write Review Form */}
+          {user && user.id !== product.seller_id && !reviews.find(r => r.user_id === user.id) && (
+            <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 mb-6">
+              <h3 className="font-bold text-sm uppercase mb-3">Write a Review</h3>
+              <form onSubmit={handleReview} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Rating</label>
+                  <div className="flex gap-1" data-testid="review-stars">
+                    {[1,2,3,4,5].map(s => (
+                      <button key={s} type="button" onClick={() => setReviewForm({...reviewForm, rating: s})}
+                        className="p-0.5 hover:scale-110 transition-transform">
+                        <Star size={24} className={s <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Comment</label>
+                  <textarea
+                    data-testid="review-comment"
+                    rows={3}
+                    value={reviewForm.comment}
+                    onChange={e => setReviewForm({...reviewForm, comment: e.target.value})}
+                    className="w-full border-2 border-black p-3 focus:outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:bg-yellow-50 resize-none text-sm"
+                    placeholder="Share your experience..."
+                  />
+                </div>
+                <button data-testid="submit-review-btn" type="submit" disabled={submittingReview}
+                  className="bg-yellow-400 text-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all px-6 py-2 font-bold uppercase text-sm disabled:opacity-50">
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Reviews List */}
+          {reviews.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-black">
+              <p className="text-gray-500">No reviews yet. Be the first to review!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map(rev => (
+                <div key={rev.id} data-testid={`review-${rev.id}`} className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{rev.user_name}</span>
+                      <div className="flex">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} size={14} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-400">{new Date(rev.created_at).toLocaleDateString()}</span>
+                  </div>
+                  {rev.comment && <p className="text-sm text-gray-700">{rev.comment}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

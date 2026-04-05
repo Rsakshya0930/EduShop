@@ -438,6 +438,178 @@ class StudentMarketplaceTester:
         
         return True  # Just testing the mechanism exists
 
+    def test_forgot_password(self):
+        """Test forgot password flow"""
+        success, response = self.run_test(
+            "Forgot Password",
+            "POST",
+            "auth/forgot-password",
+            200,
+            data={"email": "admin@studentmarket.com"}
+        )
+        return success and response.get('message', '').startswith('If the email exists')
+
+    def test_reset_password(self):
+        """Test reset password with invalid token (valid token would require email)"""
+        success, response = self.run_test(
+            "Reset Password (Invalid Token)",
+            "POST",
+            "auth/reset-password",
+            400,
+            data={"token": "invalid_token", "new_password": "newpass123"}
+        )
+        return success  # Expecting 400 for invalid token
+
+    def test_product_reviews(self):
+        """Test product review system"""
+        if not self.admin_token or not self.test_product_id:
+            return False
+        
+        # Try to create a review as admin (different user than product creator)
+        success1, response = self.run_test(
+            "Create Product Review (Admin)",
+            "POST",
+            f"products/{self.test_product_id}/reviews",
+            200,
+            data={"rating": 5, "comment": "Great product!"},
+            headers={"Authorization": f"Bearer {self.admin_token}"}
+        )
+        
+        # Get reviews for the product
+        success2, reviews = self.run_test(
+            "Get Product Reviews",
+            "GET",
+            f"products/{self.test_product_id}/reviews",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        return success1 and success2 and isinstance(reviews, list)
+
+    def test_price_range_filter(self):
+        """Test price range filtering"""
+        # Test with min and max price
+        success1, response1 = self.run_test(
+            "Price Range Filter (10-50)",
+            "GET",
+            "products?min_price=10&max_price=50&status=approved",
+            200
+        )
+        
+        # Test with only min price
+        success2, response2 = self.run_test(
+            "Price Range Filter (Min 20)",
+            "GET",
+            "products?min_price=20&status=approved",
+            200
+        )
+        
+        # Test with only max price
+        success3, response3 = self.run_test(
+            "Price Range Filter (Max 100)",
+            "GET",
+            "products?max_price=100&status=approved",
+            200
+        )
+        
+        return success1 and success2 and success3
+
+    def test_groups_system(self):
+        """Test campus groups system"""
+        if not self.user_token:
+            return False
+        
+        # Create a custom group
+        success1, group_response = self.run_test(
+            "Create Custom Group",
+            "POST",
+            "groups",
+            200,
+            data={
+                "name": "Test Study Group",
+                "description": "A group for testing",
+                "group_type": "custom"
+            },
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        group_id = group_response.get('id') if success1 else None
+        
+        # List all groups
+        success2, groups = self.run_test(
+            "List All Groups",
+            "GET",
+            "groups",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # List my groups
+        success3, my_groups = self.run_test(
+            "List My Groups",
+            "GET",
+            "groups?my_groups=true",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        if not group_id:
+            return success2 and success3
+        
+        # Get group detail
+        success4, group_detail = self.run_test(
+            "Get Group Detail",
+            "GET",
+            f"groups/{group_id}",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Test join group (should already be member as creator)
+        success5, join_response = self.run_test(
+            "Join Group (Already Member)",
+            "POST",
+            f"groups/{group_id}/join",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Test leave group
+        success6, leave_response = self.run_test(
+            "Leave Group",
+            "POST",
+            f"groups/{group_id}/leave",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        # Get group products
+        success7, group_products = self.run_test(
+            "Get Group Products",
+            "GET",
+            f"groups/{group_id}/products",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        return all([success1, success2, success3, success4, success5, success6, success7])
+
+    def test_college_groups(self):
+        """Test auto-created college groups"""
+        if not self.user_token:
+            return False
+        
+        # Test auto-create/join college group
+        success, college_group = self.run_test(
+            "Get/Create College Group",
+            "GET",
+            "groups/college/Test%20College",
+            200,
+            headers={"Authorization": f"Bearer {self.user_token}"}
+        )
+        
+        return success and college_group.get('group_type') == 'auto'
+
 def main():
     tester = StudentMarketplaceTester()
     
@@ -455,9 +627,15 @@ def main():
         ("Product Listing", tester.test_list_products),
         ("Admin Product Approval", tester.test_admin_approve_product),
         ("Product Detail", tester.test_get_product_detail),
+        ("Product Reviews System", tester.test_product_reviews),
+        ("Price Range Filtering", tester.test_price_range_filter),
         ("Order Creation", tester.test_create_order),
         ("Order Listing", tester.test_list_orders),
         ("Conversations", tester.test_conversations),
+        ("Groups System", tester.test_groups_system),
+        ("College Groups", tester.test_college_groups),
+        ("Forgot Password", tester.test_forgot_password),
+        ("Reset Password", tester.test_reset_password),
         ("Admin Statistics", tester.test_admin_stats),
         ("Admin User Management", tester.test_admin_users),
         ("Admin Product Management", tester.test_admin_products),
