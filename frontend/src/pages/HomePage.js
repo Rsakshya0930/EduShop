@@ -82,7 +82,7 @@ export default function HomePage() {
           headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
           withCredentials: true
         });
-        paths.push(data.path);
+        paths.push(data.url);
       }
       setNewProduct(prev => ({ ...prev, images: [...prev.images, ...paths] }));
     } catch (err) { alert('Image upload failed'); }
@@ -300,7 +300,7 @@ export default function HomePage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block font-bold uppercase text-xs mb-1">Price ($) *</label>
+                        <label className="block font-bold uppercase text-xs mb-1">Price (Rs. ) *</label>
                         <input
                           data-testid="product-price-input"
                           type="number"

@@ -1,32 +1,51 @@
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args, **kwargs):
+        return False
+
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, WebSocket, WebSocketDisconnect, Query, Header
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+try:
+    from motor.motor_asyncio import AsyncIOMotorClient
+except ImportError as exc:
+    raise ImportError("The 'motor' package is required. Install it with `pip install motor`") from exc
 from bson import ObjectId
 import os
 import logging
 import uuid
-import bcrypt
-import jwt
+import hashlib
+import hmac
+import base64
+try:
+    import jwt  # type: ignore[import]
+    from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
+except ImportError as exc:
+    raise ImportError("The 'PyJWT' package is required. Install it with `pip install PyJWT`") from exc
 import json
 import secrets
 import asyncio
-import requests
-import resend
+import urllib.request
+import urllib.error
+try:
+    import resend
+except ImportError:
+    resend = None
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field
 from typing import Optional, List
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+# Use the NAME of the variable, not the connection string
+MONGO_URI = 'mongodb://localhost:27017/'
+mongo_url = os.environ.get('MONGO_URI')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client['EduShop']
 
 # JWT config
 JWT_ALGORITHM = "HS256"
@@ -44,7 +63,7 @@ if RESEND_API_KEY:
 
 async def send_email(to_email, subject, html_content):
     """Send email via Resend. Falls back to logging if no API key."""
-    if not RESEND_API_KEY:
+    if not RESEND_API_KEY or resend is None:
         logger.info(f"[EMAIL-LOG] To: {to_email} | Subject: {subject} | Body: {html_content[:200]}")
         return None
     try:
@@ -62,41 +81,63 @@ EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "studentmarket"
 storage_key = None
 
+def _http_post_json(url, payload, timeout=None):
+    data = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    request_obj = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    with urllib.request.urlopen(request_obj, timeout=timeout) as resp:
+        content = resp.read()
+        return json.loads(content.decode("utf-8"))
+
+def _http_put(url, headers, data, timeout=None):
+    request_obj = urllib.request.Request(url, data=data, headers=headers, method="PUT")
+    with urllib.request.urlopen(request_obj, timeout=timeout) as resp:
+        content = resp.read()
+        return json.loads(content.decode("utf-8"))
+
+def _http_get(url, headers=None, timeout=None):
+    request_obj = urllib.request.Request(url, headers=headers or {}, method="GET")
+    with urllib.request.urlopen(request_obj, timeout=timeout) as resp:
+        content = resp.read()
+        content_type = resp.getheader("Content-Type", "application/octet-stream")
+        return content, content_type
+
 def init_storage():
     global storage_key
     if storage_key:
         return storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    storage_key = resp.json()["storage_key"]
+    result = _http_post_json(f"{STORAGE_URL}/init", {"emergent_key": EMERGENT_KEY}, timeout=30)
+    storage_key = result["storage_key"]
     return storage_key
 
 def put_object(path, data, content_type):
     key = init_storage()
-    resp = requests.put(
+    return _http_put(
         f"{STORAGE_URL}/objects/{path}",
         headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120
+        data=data,
+        timeout=120
     )
-    resp.raise_for_status()
-    return resp.json()
 
 def get_object(path):
     key = init_storage()
-    resp = requests.get(
+    return _http_get(
         f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60
+        headers={"X-Storage-Key": key},
+        timeout=60
     )
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 # Password hashing
 def hash_password(password):
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
+    return base64.b64encode(salt + dk).decode("utf-8")
 
 def verify_password(plain_password, hashed_password):
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    decoded = base64.b64decode(hashed_password.encode("utf-8"))
+    salt, stored_dk = decoded[:16], decoded[16:]
+    dk = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt, 100_000)
+    return hmac.compare_digest(dk, stored_dk)
 
 # JWT tokens
 def create_access_token(user_id, email, role):
@@ -126,9 +167,9 @@ async def get_current_user(request: Request):
         user["_id"] = str(user["_id"])
         user.pop("password_hash", None)
         return user
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def require_admin(user):
@@ -185,6 +226,8 @@ class ResetPasswordInput(BaseModel):
 # App setup
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+from fastapi.staticfiles import StaticFiles
+app.mount("/api/files", StaticFiles(directory="uploads"), name="files")
 
 # ==================== AUTH ROUTES ====================
 
@@ -284,7 +327,7 @@ async def refresh_token(request: Request, response: Response):
         new_access = create_access_token(user_id, user["email"], user.get("role", "user"))
         response.set_cookie(key="access_token", value=new_access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
         return {"message": "Token refreshed"}
-    except jwt.InvalidTokenError:
+    except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 @api_router.post("/auth/forgot-password")
@@ -358,14 +401,17 @@ async def toggle_mode(request: Request):
 
 # ==================== UPLOAD ROUTES ====================
 
+import os
 @api_router.post("/upload")
-async def upload_file(request: Request, file: UploadFile = File(...)):
-    user = await get_current_user(request)
-    ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
-    path = f"{APP_NAME}/uploads/{user['_id']}/{uuid.uuid4()}.{ext}"
-    data = await file.read()
-    result = put_object(path, data, file.content_type or "application/octet-stream")
-    return {"path": result["path"], "size": result.get("size", 0)}
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        filename = file.filename.replace(" ", "_")
+        file_path = os.path.join("uploads", filename)
+        with open(file_path, "wb") as buffer:
+            buffer.write(await file.read())
+        return {"url": filename} # This returns the string "image.jpg"
+    except Exception as e:
+        return {"error": str(e)}
 
 @api_router.get("/files/{path:path}")
 async def download_file(path: str, auth: str = Query(None)):
@@ -1071,10 +1117,10 @@ async def startup():
     await seed_admin()
     
     try:
-        init_storage()
-        logger.info("Storage initialized")
+        os.makedirs("uploads", exist_ok=True)
+        logger.info("Local storage folder 'uploads' verified")
     except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+        logger.error(f"Failed to create uploads directory: {e}")
     
     # Write test credentials
     os.makedirs("/app/memory", exist_ok=True)

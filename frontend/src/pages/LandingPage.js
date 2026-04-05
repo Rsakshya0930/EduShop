@@ -57,7 +57,7 @@ export default function LandingPage() {
           <div className="hidden md:block animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1620650764255-6797e68c7904?w=600&h=500&fit=crop"
+                src="/landing-hero.png"
                 alt="Students on campus"
                 className="w-full h-auto"
               />
@@ -133,7 +133,7 @@ export default function LandingPage() {
       <footer className="border-t-4 border-black bg-white py-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="font-heading font-bold text-lg uppercase">
-            Student<span className="bg-yellow-400 px-1">Market</span>
+            Edu<span className="bg-yellow-400 px-1">Shop</span>
           </p>
           <p className="text-sm text-gray-500 mt-2">The student marketplace for everything you need.</p>
         </div>

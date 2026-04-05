@@ -27,7 +27,15 @@ export default function ProductCard({ product, wishlisted = false, onWishlistCha
   const imageUrl = product.images && product.images.length > 0
     ? `${API_BASE}/api/files/${product.images[0]}`
     : 'https://images.unsplash.com/photo-1607603289612-71ae134aa577?w=400&h=400&fit=crop';
-
+  // Inside your Image Upload handler:
+   // Inside your Image Upload handler:
+const onUploadSuccess = (filename) => {
+  // Update the form state so 'images' isn't empty/null
+  setFormData({
+    ...formData,
+    images: [filename] // Put the filename string into the array
+  });
+};
   return (
     <Link
       to={`/products/${product.id}`}
@@ -70,7 +78,7 @@ export default function ProductCard({ product, wishlisted = false, onWishlistCha
         <p className="text-sm text-gray-600 line-clamp-2 flex-1">{product.description}</p>
         <div className="flex items-center justify-between mt-auto pt-2">
           <span className="text-2xl font-black bg-yellow-300 px-2 border-2 border-black" data-testid={`product-price-${product.id}`}>
-            ${product.price}
+            Rs. {product.price}
           </span>
           {product.condition && (
             <span className="text-xs font-bold uppercase border-2 border-black px-2 py-0.5">

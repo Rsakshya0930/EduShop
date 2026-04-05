@@ -136,7 +136,7 @@ export default function ProductDetailPage() {
             <span className="inline-block bg-black text-white px-3 py-1 text-xs font-bold uppercase">{product.category}</span>
             <h1 className="font-heading text-3xl sm:text-4xl font-black uppercase tracking-tight" data-testid="product-detail-name">{product.name}</h1>
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-black bg-yellow-300 px-3 py-1 border-2 border-black" data-testid="product-detail-price">${product.price}</span>
+              <span className="text-3xl font-black bg-yellow-300 px-3 py-1 border-2 border-black" data-testid="product-detail-price">Rs. {product.price}</span>
               <span className="border-2 border-black px-3 py-1 font-bold text-sm uppercase">{product.condition}</span>
             </div>
             <p className="text-base text-gray-700 leading-relaxed" data-testid="product-detail-desc">{product.description}</p>

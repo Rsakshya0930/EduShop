@@ -24,7 +24,7 @@ export default function Header({ searchQuery, setSearchQuery, onSearch }) {
         {/* Logo */}
         <Link to={user ? '/home' : '/'} className="flex-shrink-0" data-testid="logo-link">
           <h1 className="font-heading text-xl sm:text-2xl font-black tracking-tighter uppercase">
-            Student<span className="bg-yellow-400 px-1">Market</span>
+            Edu<span className="bg-yellow-400 px-1">Shop</span>
           </h1>
         </Link>
 
