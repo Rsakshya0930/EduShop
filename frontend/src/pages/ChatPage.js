@@ -6,7 +6,8 @@ import Header from '@/components/Header';
 import { Send, ArrowLeft, Loader2 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const WS_BASE = process.env.REACT_APP_BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const WS_BASE = backendUrl.replace('https://', 'wss://').replace('http://', 'ws://');
 
 export default function ChatPage() {
   const { convId } = useParams();
