@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 # MongoDB connection
 # Use the NAME of the variable, not the connection string
-MONGO_URI = 'mongodb://localhost:27017/'
+MONGO_URI = 'mongodb+srv://Admin_Edushop:<Admin_Edushop0925>@edushop.zvcwk3o.mongodb.net/?appName=EduShop'
 mongo_url = os.environ.get('MONGO_URI')
 client = AsyncIOMotorClient(mongo_url)
 db = client['EduShop']
@@ -51,7 +51,7 @@ db = client['EduShop']
 JWT_ALGORITHM = "HS256"
 
 def get_jwt_secret():
-    return os.environ["JWT_SECRET"]
+    return os.environ.get("JWT_SECRET", "a_temporary_secret_for_development_only")
 
 # Resend email config
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
@@ -225,9 +225,29 @@ class ResetPasswordInput(BaseModel):
 
 # App setup
 app = FastAPI()
+UPLOAD_DIR = "uploads"
+
+# Create the directory if it doesn't exist
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+    print(f"Created missing directory: {UPLOAD_DIR}")
 api_router = APIRouter(prefix="/api")
 from fastapi.staticfiles import StaticFiles
 app.mount("/api/files", StaticFiles(directory="uploads"), name="files")
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 # ==================== AUTH ROUTES ====================
 
