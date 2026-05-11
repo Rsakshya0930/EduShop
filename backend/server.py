@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 # MongoDB connection
 # Use the NAME of the variable, not the connection string
-MONGO_URI = 'mongodb+srv://Admin_Edushop:<Admin_Edushop0925>@edushop.zvcwk3o.mongodb.net/?appName=EduShop'
+MONGO_URI = 'mongodb+srv://Admin_Edushop:<AdminEdushop0925>@edushop.zvcwk3o.mongodb.net/?appName=EduShop'
 mongo_url = os.environ.get('MONGO_URI')
 client = AsyncIOMotorClient(mongo_url)
 db = client['EduShop']
