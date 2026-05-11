@@ -225,15 +225,6 @@ class ResetPasswordInput(BaseModel):
 
 # App setup
 app = FastAPI()
-UPLOAD_DIR = "uploads"
-
-# Create the directory if it doesn't exist
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-    print(f"Created missing directory: {UPLOAD_DIR}")
-api_router = APIRouter(prefix="/api")
-from fastapi.staticfiles import StaticFiles
-app.mount("/api/files", StaticFiles(directory="uploads"), name="files")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 origins = [
@@ -248,6 +239,16 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],  # Allows all headers
 )
+UPLOAD_DIR = "uploads"
+
+# Create the directory if it doesn't exist
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+    print(f"Created missing directory: {UPLOAD_DIR}")
+api_router = APIRouter(prefix="/api")
+from fastapi.staticfiles import StaticFiles
+app.mount("/api/files", StaticFiles(directory="uploads"), name="files")
+
 
 # ==================== AUTH ROUTES ====================
 
