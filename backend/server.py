@@ -238,7 +238,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 origins = [
     "http://localhost:3000",
-    "https://edushop-frontend.onrender.com/",
+    "https://edushop-frontend.onrender.com",
 ]
 
 app.add_middleware(
