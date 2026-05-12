@@ -164,7 +164,7 @@ export default function AdminDashboard() {
                     { icon: Users, label: 'Total Users', value: stats.total_users, color: 'bg-yellow-300' },
                     { icon: Package, label: 'Total Products', value: stats.total_products, color: 'bg-yellow-200' },
                     { icon: ShoppingCart, label: 'Total Orders', value: stats.total_orders, color: 'bg-yellow-100' },
-                    { icon: DollarSign, label: 'Revenue', value: `Rs.${stats.total_revenue?.toFixed(2) || '0.00'}`, color: 'bg-yellow-400' },
+                    { icon: IndianRupee, label: 'Revenue', value: `Rs.${stats.total_revenue?.toFixed(2) || '0.00'}`, color: 'bg-yellow-400' },
                   ].map(s => (
                     <div key={s.label} className={`${s.color} border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4`}>
                       <s.icon size={24} className="mb-2" />
