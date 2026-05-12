@@ -89,7 +89,7 @@ export default function OrdersPage() {
                     )}
                     <div>
                       <h3 className="font-bold text-lg">{order.product_name}</h3>
-                      <p className="text-xl font-black bg-yellow-300 inline-block px-2 border-2 border-black">${order.product_price}</p>
+                      <p className="text-xl font-black bg-yellow-300 inline-block px-2 border-2 border-black">Rs.{order.product_price}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {tab === 'buyer' ? `Seller: ${order.seller_name}` : `Buyer: ${order.buyer_name}`}
                       </p>

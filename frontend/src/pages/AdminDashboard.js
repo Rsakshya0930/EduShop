@@ -164,7 +164,7 @@ export default function AdminDashboard() {
                     { icon: Users, label: 'Total Users', value: stats.total_users, color: 'bg-yellow-300' },
                     { icon: Package, label: 'Total Products', value: stats.total_products, color: 'bg-yellow-200' },
                     { icon: ShoppingCart, label: 'Total Orders', value: stats.total_orders, color: 'bg-yellow-100' },
-                    { icon: DollarSign, label: 'Revenue', value: `$${stats.total_revenue?.toFixed(2) || '0.00'}`, color: 'bg-yellow-400' },
+                    { icon: DollarSign, label: 'Revenue', value: `Rs.${stats.total_revenue?.toFixed(2) || '0.00'}`, color: 'bg-yellow-400' },
                   ].map(s => (
                     <div key={s.label} className={`${s.color} border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4`}>
                       <s.icon size={24} className="mb-2" />
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold truncate">{p.name}</p>
-                        <p className="text-sm text-gray-500">${p.price} &middot; {p.category}</p>
+                        <p className="text-sm text-gray-500">Rs.{p.price} &middot; {p.category}</p>
                         <span className={`inline-block px-2 py-0.5 text-xs font-bold uppercase border border-black mt-1 ${
                           p.status === 'approved' ? 'bg-green-400' : p.status === 'pending' ? 'bg-yellow-400' : 'bg-red-400 text-white'
                         }`}>{p.status}</span>
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div>
                         <p className="font-bold">{o.product_name}</p>
-                        <p className="text-lg font-black">${o.product_price}</p>
+                        <p className="text-lg font-black">Rs.{o.product_price}</p>
                         <p className="text-xs text-gray-500">Buyer: {o.buyer_name}</p>
                         <p className="text-xs text-gray-500">{new Date(o.created_at).toLocaleDateString()}</p>
                       </div>
