@@ -181,7 +181,7 @@ export default function HomePage() {
               <span className="font-bold text-sm uppercase">Price Range:</span>
               <div className="flex items-center gap-2">
                 <div>
-                  <label className="block text-xs font-bold uppercase mb-1">Min ($)</label>
+                  <label className="block text-xs font-bold uppercase mb-1">Min (Rs.)</label>
                   <input
                     data-testid="price-min"
                     type="number"
@@ -195,7 +195,7 @@ export default function HomePage() {
                 </div>
                 <span className="font-bold mt-5">—</span>
                 <div>
-                  <label className="block text-xs font-bold uppercase mb-1">Max ($)</label>
+                  <label className="block text-xs font-bold uppercase mb-1">Max (Rs.)</label>
                   <input
                     data-testid="price-max"
                     type="number"
